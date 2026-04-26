@@ -36,7 +36,7 @@ jobs:
         run: |
           cd openwrt_build
           mkdir -p package/luci-app-fail2ban
-          cp -r ${{ github.workspace }}/fail2ban-luci/root/* package/luci-app-fail2ban/
+          cp -r ${{ github.workspace }}/root/* package/luci-app-fail2ban/
           ./scripts/feeds install -a
 
       - name: Configure
@@ -101,7 +101,7 @@ jobs:
         run: |
           cd openwrt_${{ matrix.target }}
           mkdir -p package/luci-app-fail2ban
-          cp -r ${{ github.workspace }}/fail2ban-luci/root/* package/luci-app-fail2ban/
+          cp -r ${{ github.workspace }}/root/* package/luci-app-fail2ban/
           ./scripts/feeds install -a
 
       - name: Configure for ${{ matrix.target }}
