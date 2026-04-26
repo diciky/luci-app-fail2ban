@@ -36,9 +36,19 @@ OpenWrt LuCI 管理界面 for Fail2ban
 
 ## 系统要求
 
-- OpenWrt 21.02+ 或 LEDE 17.01+
+- **OpenWrt 21.02+** 或 **LEDE 17.01+** (已在 OpenWrt 21.02.3 上测试通过)
 - fail2ban 已安装
 - luci-base
+
+## 前提条件
+
+确保已安装 fail2ban：
+
+```bash
+# 通过 OpenWrt 包管理器安装
+opkg update
+opkg install fail2ban
+```
 
 ## 安装方式
 
@@ -57,13 +67,25 @@ make package/luci-app-fail2ban/compile
 
 ### 方式二：手动安装
 
+上传所有文件到路由器：
+
 ```bash
 # 上传所有文件
 scp -P 38438 -r root/* root@your-router://
+
+# 设置权限
 chmod +x /www/cgi-bin/fail2ban
 
 # 重启 LuCI
 /etc/init.d/uhttpd restart
+```
+
+### 方式三：下载 IPK 包安装
+
+```bash
+# 下载最新 release 的 .ipk 文件
+# 通过 SCP 上传后执行
+opkg install luci-app-fail2ban_*.ipk
 ```
 
 ## 访问地址
