@@ -20,7 +20,10 @@ jobs:
       - name: Setup OpenWrt Build Environment
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential ccache ecj fastjar flex gawk gettext git java-proposed-classpath libncurses5-dev libncursesw5-dev libssl-dev python3 python3-distutils python3-yaml rsync subversion unzip wget which zlib1g-dev
+          sudo apt-get install -y \
+            build-essential ccache flex gawk gettext git \
+            libncurses5-dev libncursesw5-dev libssl-dev \
+            python3 python3-yaml rsync subversion unzip wget which zlib1g-dev
 
       - name: Clone OpenWrt
         run: |
@@ -32,56 +35,34 @@ jobs:
       - name: Prepare Package
         run: |
           cd openwrt_build
-          # Create package directory if not exists
-          mkdir -p package/feeds/luci
-          # Copy package to OpenWrt feeds
-          cp -r ${{ github.workspace }}/fail2ban-luci/root/* package/feeds/luci/luci-app-fail2ban/
-          # Also copy to local package directory for make
           mkdir -p package/luci-app-fail2ban
           cp -r ${{ github.workspace }}/fail2ban-luci/root/* package/luci-app-fail2ban/
-
-      - name: Update Feeds
-        run: |
-          cd openwrt_build
-          ./scripts/feeds update luci
           ./scripts/feeds install -a
 
       - name: Configure
         run: |
           cd openwrt_build
-          # Use lightweight config for faster build
           cat > .config << 'EOF'
-          CONFIG_MODULES=y
           CONFIG_HAVE_DOT_CONFIG=y
           CONFIG_HAVE_CCACHE=y
           CONFIG_CCACHE=y
           CONFIG_CCACHE_DIR="/tmp/.ccache"
-          CONFIG_LUCI_CSSTIDY=
-          CONFIG_LUCI_JSMIN=
-          CONFIG_LUCI_LUCSID=
-          CONFIG_LUCI_UGLY=
-          CONFIG_PACKAGE_luci-app-firewall=y
           CONFIG_PACKAGE_luci-base=y
           CONFIG_PACKAGE_luci-compat=y
           CONFIG_PACKAGE_luci-app-fail2ban=y
-          CONFIG_PACKAGE_libc=y
-          CONFIG_PACKAGE_libgcc=y
-          CONFIG_PACKAGE_libpthread=y
-          CONFIG_END=y
           EOF
           make defconfig
 
       - name: Build Package
         run: |
           cd openwrt_build
-          make package/luci-app-fail2ban/compile -j$(nproc)
+          make package/luci-app-fail2ban/compile -j$(nproc) V=s
 
       - name: Collect Artifact
         run: |
           cd openwrt_build
-          find . -name "luci-app-fail2ban_*.ipk" -type f 2>/dev/null
           mkdir -p ${{ github.workspace }}/artifacts
-          cp $(find . -name "luci-app-fail2ban_*.ipk" -type f 2>/dev/null | head -1) ${{ github.workspace }}/artifacts/ 2>/dev/null || true
+          find . -name "luci-app-fail2ban_*.ipk" -type f -exec cp {} ${{ github.workspace }}/artifacts/ \;
 
       - name: Upload Artifact
         if: success()
@@ -94,11 +75,9 @@ jobs:
   build-all-targets:
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch'
-
     strategy:
       matrix:
-        target: [armvirt, x86_64, mvebu]
-
+        target: [armvirt, x86_64]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -106,7 +85,10 @@ jobs:
       - name: Setup Build Environment
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential ccache ecj fastjar flex gawk gettext git java-proposed-classpath libncurses5-dev libncursesw5-dev libssl-dev python3 python3-distutils python3-yaml rsync subversion unzip wget which zlib1g-dev
+          sudo apt-get install -y \
+            build-essential ccache flex gawk gettext git \
+            libncurses5-dev libncursesw5-dev libssl-dev \
+            python3 python3-yaml rsync subversion unzip wget which zlib1g-dev
 
       - name: Clone OpenWrt (${{ matrix.target }})
         run: |
@@ -125,23 +107,19 @@ jobs:
       - name: Configure for ${{ matrix.target }}
         run: |
           cd openwrt_${{ matrix.target }}
-          case "${{ matrix.target }}" in
-            armvirt) echo 'CONFIG_TARGET_armvirt=y' >> .config ;;
-            x86_64) echo 'CONFIG_TARGET_x86_64=y' >> .config ;;
-            mvebu) echo 'CONFIG_TARGET_mvebu=y' >> .config ;;
-          esac
+          if [ "${{ matrix.target }}" = "armvirt" ]; then
+            echo 'CONFIG_TARGET_armvirt=y' >> .config
+          elif [ "${{ matrix.target }}" = "x86_64" ]; then
+            echo 'CONFIG_TARGET_x86_64=y' >> .config
+          fi
           echo 'CONFIG_HAVE_DOT_CONFIG=y' >> .config
-          echo 'CONFIG_LUCI_CSSTIDY=' >> .config
-          echo 'CONFIG_LUCI_JSMIN=' >> .config
-          echo 'CONFIG_LUCI_LUCSID=' >> .config
-          echo 'CONFIG_LUCI_UGLY=' >> .config
           echo 'CONFIG_PACKAGE_luci-app-fail2ban=y' >> .config
           make defconfig
 
       - name: Build for ${{ matrix.target }}
         run: |
           cd openwrt_${{ matrix.target }}
-          make -j$(nproc) 2>&1 | tail -50
+          make -j$(nproc) 2>&1 | tail -30
 
       - name: Collect Artifacts
         if: success()
