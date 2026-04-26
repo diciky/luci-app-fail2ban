@@ -1,54 +1,37 @@
 <%+header%>
-
-<%
-local function exec(cmd)
-	local f = io.popen(cmd)
-	local output = f:read("*a")
-	f:close()
-	return output
-end
-local log_content = exec("tail -200 /var/log/fail2ban.log 2>/dev/null")
-if log_content == "" then
-	log_content = "Log file not found or empty.\n\nTry: touch /var/log/fail2ban.log && /etc/init.d/fail2ban restart"
-end
-%>
-
 <div class="cbi-map">
-	<h2><%:Fail2ban Log%></h2>
-
-	<div class="cbi-section">
-		<div class="cbi-section-node">
-			<pre style="background:#1e1e1e;color:#d4d4d4;padding:15px;border-radius:5px;overflow-x:auto;max-height:500px;font-size:11px;font-family:monospace;white-space:pre-wrap;word-break:break-all;"><%=log_content%></pre>
-		</div>
-	</div>
+	<h2>Fail2ban 日志</h2>
 
 	<div class="cbi-section">
 		<div class="cbi-section-node">
 			<div style="margin:10px 0;">
-				<input type="button" class="btn" value="<%:Refresh%>" onclick="location.reload()" />
-				<a class="btn" href="<%=luci.dispatcher.build_url("admin/services/fail2ban/status")%>"><%:Back to Status%></a>
+				<a class="btn" href="<%=luci.dispatcher.build_url("admin/services/fail2ban")%>">状态</a>
+				<a class="btn" href="<%=luci.dispatcher.build_url("admin/services/fail2ban/bans")%>">封禁列表</a>
+				<a class="btn" href="<%=luci.dispatcher.build_url("admin/services/fail2ban/ban")%>">封禁IP</a>
+				<a class="btn" href="<%=luci.dispatcher.build_url("admin/services/fail2ban/config")%>">配置</a>
 			</div>
 		</div>
 	</div>
 
 	<div class="cbi-section">
-		<legend><%:Log Options%></legend>
+		<legend>最近日志条目</legend>
 		<div class="cbi-section-node">
-			<div style="margin:10px 0;">
-				<form method="get" action="<%=luci.dispatcher.build_url("admin/services/fail2ban/log")%>" style="display:inline;">
-					<%:Show last%>
-					<select name="lines" style="width:80px;">
-						<option value="50">50</option>
-						<option value="100">100</option>
-						<option value="200" selected>200</option>
-						<option value="500">500</option>
-					</select>
-					<%:lines%>
-					<input type="submit" class="btn" value="<%:Apply%>" />
-				</form>
-			</div>
+			<pre style="background:#1a1a1a;color:#00ff00;padding:15px;border-radius:5px;overflow-x:auto;font-size:11px;max-height:500px;font-family:monospace;white-space:pre-wrap;word-break:break-all;border:1px solid #333;"><%
+			local f = io.popen("tail -50 /var/log/fail2ban.log 2>/dev/null")
+			if f then
+				local output = f:read("*a")
+				f:close()
+				if output and output ~= "" then
+					print(output)
+				else
+					print("日志文件为空或未找到")
+					print("运行: touch /var/log/fail2ban.log && /etc/init.d/fail2ban restart")
+				end
+			else
+				print("无法读取日志文件")
+			end
+			%></pre>
 		</div>
 	</div>
 </div>
-
 <%+footer%>

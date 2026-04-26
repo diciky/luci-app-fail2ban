@@ -1,0 +1,21 @@
+[DEFAULT]
+ignoreip = 127.0.0.1/8 10.10.10.0/24 113.81.20.43
+bantime = 3600
+findtime = 600
+maxretry = 5
+
+[luci]
+enabled = true
+filter = luci
+action = iptables[name=LUCI, port=http, protocol=tcp]
+logpath = /tmp/log/system.log
+maxretry = 5
+bantime = 604800
+
+[dropbear]
+enabled = true
+filter = dropbear
+action = iptables[name=SSH, port=38438, protocol=tcp]
+logpath = /tmp/log/system.log
+maxretry = 5
+bantime = 604800

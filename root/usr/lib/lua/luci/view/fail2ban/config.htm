@@ -1,75 +1,94 @@
 <%+header%>
-
 <div class="cbi-map">
-	<h2><%:Fail2ban Configuration%></h2>
+	<h2>Fail2ban 配置</h2>
 
-	<form method="post" action="<%=luci.dispatcher.build_url("admin/services/fail2ban/config")%>">
-		<div class="cbi-section">
-			<legend><%:Global Settings%></legend>
-			<div class="cbi-section-node">
-				<table class="cbi-section-table" style="width:100%;">
-					<tr>
-						<td style="width:200px;"><%:Enable Fail2ban%></td>
-						<td>
-							<input type="checkbox" name="enabled" value="1" checked />
-						</td>
-					</tr>
-					<tr>
-						<td><%:SSH Port%></td>
-						<td>
-							<input type="text" name="ssh_port" value="38438" style="width:100px;" />
-						</td>
-					</tr>
-					<tr>
-						<td><%:Ban Time (seconds)%></td>
-						<td>
-							<input type="text" name="bantime" value="86400" style="width:120px;" />
-							<span style="color:#888;font-size:12px;">(86400 = 24 hours)</span>
-						</td>
-					</tr>
-					<tr>
-						<td><%:Find Time (seconds)%></td>
-						<td>
-							<input type="text" name="findtime" value="600" style="width:120px;" />
-							<span style="color:#888;font-size:12px;">(600 = 10 minutes)</span>
-						</td>
-					</tr>
-					<tr>
-						<td><%:Max Retry%></td>
-						<td>
-							<input type="text" name="maxretry" value="5" style="width:100px;" />
-						</td>
-					</tr>
-					<tr>
-						<td><%:Log Level%></td>
-						<td>
-							<select name="loglevel" style="width:120px;">
-								<option value="CRITICAL">CRITICAL</option>
-								<option value="ERROR">ERROR</option>
-								<option value="WARN">WARN</option>
-								<option value="INFO" selected>INFO</option>
-								<option value="DEBUG">DEBUG</option>
-							</select>
-						</td>
-					</tr>
-					<tr>
-						<td><%:Ban Time Increment%></td>
-						<td>
-							<input type="checkbox" name="bantimeincrement" value="1" />
-							<span style="color:#888;font-size:12px;">Enable progressive ban time</span>
-						</td>
-					</tr>
-				</table>
+	<div class="cbi-section">
+		<div class="cbi-section-node">
+			<div style="margin:10px 0;">
+				<a class="btn" href="<%=luci.dispatcher.build_url("admin/services/fail2ban")%>">状态</a>
+				<a class="btn" href="<%=luci.dispatcher.build_url("admin/services/fail2ban/bans")%>">封禁列表</a>
+				<a class="btn" href="<%=luci.dispatcher.build_url("admin/services/fail2ban/ban")%>">封禁IP</a>
+				<a class="btn" href="<%=luci.dispatcher.build_url("admin/services/fail2ban/log")%>">日志</a>
 			</div>
 		</div>
+	</div>
 
-		<div class="cbi-section">
-			<div class="cbi-section-node">
-				<input type="submit" class="btn" value="<%:Save & Apply%>" />
-				<a class="btn" href="<%=luci.dispatcher.build_url("admin/services/fail2ban/status")%>"><%:Cancel%></a>
+	<div class="cbi-section">
+		<legend>配置文件编辑器</legend>
+		<div class="cbi-section-node">
+			<form method="post" action="/cgi-bin/fail2ban?save_config">
+				<input type="hidden" name="cmd" value="save_config">
+				<div style="padding:15px;margin-bottom:15px;border:1px solid #4CAF50;">
+					<textarea name="config_content" rows="15" style="width:100%;font-family:monospace;font-size:12px;padding:10px;border:1px solid #999;background:#1a1a1a;color:#00ff00;"><%
+					local f = io.popen("cat /etc/config/fail2ban 2>/dev/null")
+					if f then
+						local output = f:read("*a")
+						f:close()
+						if output and output ~= "" then
+							print(output:gsub("<", "&lt;"):gsub(">", "&gt;"))
+						end
+					end
+					%></textarea>
+				</div>
+				<input type="submit" class="btn" style="background:#4CAF50;color:white;padding:10px 20px;border:none;border-radius:5px;cursor:pointer;" value="保存配置" />
+			</form>
+		</div>
+	</div>
+
+	<div class="cbi-section">
+		<legend>服务控制</legend>
+		<div class="cbi-section-node">
+			<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px;">
+				<div style="padding:15px;border:1px solid #4CAF50;">
+					<h4 style="margin:0 0 10px 0;">启动服务</h4>
+					<p style="margin:0 0 10px 0;color:#666;font-size:12px;">启动 Fail2ban 服务</p>
+					<a class="btn" style="background:#4CAF50;color:white;padding:8px 16px;text-decoration:none;border-radius:5px;" href="/cgi-bin/fail2ban?start">启动</a>
+				</div>
+				<div style="padding:15px;border:1px solid #f44336;">
+					<h4 style="margin:0 0 10px 0;">停止服务</h4>
+					<p style="margin:0 0 10px 0;color:#666;font-size:12px;">停止 Fail2ban 服务</p>
+					<a class="btn" style="background:#f44336;color:white;padding:8px 16px;text-decoration:none;border-radius:5px;" href="/cgi-bin/fail2ban?stop">停止</a>
+				</div>
+				<div style="padding:15px;border:1px solid #2196F3;">
+					<h4 style="margin:0 0 10px 0;">重载配置</h4>
+					<p style="margin:0 0 10px 0;color:#666;font-size:12px;">重载配置而不重启</p>
+					<a class="btn" style="background:#2196F3;color:white;padding:8px 16px;text-decoration:none;border-radius:5px;" href="/cgi-bin/fail2ban?reload">重载</a>
+				</div>
+				<div style="padding:15px;border:1px solid #FF9800;">
+					<h4 style="margin:0 0 10px 0;">重启服务</h4>
+					<p style="margin:0 0 10px 0;color:#666;font-size:12px;">完全重启 Fail2ban 服务</p>
+					<a class="btn" style="background:#FF9800;color:white;padding:8px 16px;text-decoration:none;border-radius:5px;" href="/cgi-bin/fail2ban?restart">重启</a>
+				</div>
 			</div>
 		</div>
-	</form>
+	</div>
+
+	<div class="cbi-section">
+		<legend>重要路径</legend>
+		<div class="cbi-section-node">
+			<table style="width:100%;border-collapse:collapse;">
+				<tr>
+					<th style="padding:8px;border:1px solid #ddd;text-align:left;font-weight:bold;">项目</th>
+					<th style="padding:8px;border:1px solid #ddd;text-align:left;font-weight:bold;">路径</th>
+				</tr>
+				<tr>
+					<td style="padding:8px;border:1px solid #ddd;">配置文件</td>
+					<td style="padding:8px;border:1px solid #ddd;"><code>/etc/config/fail2ban</code></td>
+				</tr>
+				<tr>
+					<td style="padding:8px;border:1px solid #ddd;">日志文件</td>
+					<td style="padding:8px;border:1px solid #ddd;"><code>/var/log/fail2ban.log</code></td>
+				</tr>
+				<tr>
+					<td style="padding:8px;border:1px solid #ddd;">Socket</td>
+					<td style="padding:8px;border:1px solid #ddd;"><code>/var/run/fail2ban/fail2ban.sock</code></td>
+				</tr>
+				<tr>
+					<td style="padding:8px;border:1px solid #ddd;">数据库</td>
+					<td style="padding:8px;border:1px solid #ddd;"><code>/var/lib/fail2ban/fail2ban.db</code></td>
+				</tr>
+			</table>
+		</div>
+	</div>
 </div>
-
 <%+footer%>

@@ -1,61 +1,84 @@
 <%+header%>
-
-<%
-local ips = require("luci.controller.fail2ban").get_banned_ips()
-%>
-
 <div class="cbi-map">
-	<h2><%:Banned IP Addresses%></h2>
-
-	<div class="cbi-section">
-		<div class="cbi-section-node">
-			<table class="cbi-section-table" style="width:100%;">
-				<tr class="cbi-section-table-titles">
-					<th class="cbi-section-table-cell" style="width:15%;"><%:ID%></th>
-					<th class="cbi-section-table-cell" style="width:35%;"><%:IP Address%></th>
-					<th class="cbi-section-table-cell" style="width:25%;"><%:Jail%></th>
-					<th class="cbi-section-table-cell" style="width:25%;"><%:Actions%></th>
-				</tr>
-				<% for i, item in ipairs(ips) do %>
-					<tr class="cbi-section-table-row">
-						<td class="cbi-section-table-cell"><%=i%></td>
-						<td class="cbi-section-table-cell"><strong><%=item.ip%></strong></td>
-						<td class="cbi-section-table-cell">sshd</td>
-						<td class="cbi-section-table-cell">
-							<a class="btn" href="<%=luci.dispatcher.build_url("admin/services/fail2ban/action/unban")%>?ip=<%=item.ip%>"><%:Unban%></a>
-						</td>
-					</tr>
-				<% end %>
-				<% if #ips == 0 then %>
-					<tr>
-						<td colspan="4" style="text-align:center;padding:20px;color:#888;">
-							<%:No banned IPs%>
-						</td>
-					</tr>
-				<% end %>
-			</table>
-		</div>
-	</div>
+	<h2>已封禁IP列表</h2>
 
 	<div class="cbi-section">
 		<div class="cbi-section-node">
 			<div style="margin:10px 0;">
-				<a class="btn" href="<%=luci.dispatcher.build_url("admin/services/fail2ban/action/unban_all")%>"><%:Unban All%></a>
-				<input type="button" class="btn" value="<%:Refresh%>" onclick="location.reload()" />
-				<a class="btn" href="<%=luci.dispatcher.build_url("admin/services/fail2ban/status")%>"><%:Back to Status%></a>
+				<a class="btn" href="<%=luci.dispatcher.build_url("admin/services/fail2ban")%>">状态</a>
+				<a class="btn" href="<%=luci.dispatcher.build_url("admin/services/fail2ban/ban")%>">封禁IP</a>
+				<a class="btn" href="<%=luci.dispatcher.build_url("admin/services/fail2ban/log")%>">日志</a>
+				<a class="btn" href="<%=luci.dispatcher.build_url("admin/services/fail2ban/config")%>">配置</a>
 			</div>
 		</div>
 	</div>
 
 	<div class="cbi-section">
-		<legend><%:Information%></legend>
 		<div class="cbi-section-node">
-			<div style="background:#f9f9f9;padding:10px;border-radius:5px;font-size:13px;color:#666;">
-				<p><%:Banned IPs are blocked by fail2ban at the firewall level.%></p>
-				<p><%:To permanently unban an IP, you need to add it to the whitelist.%></p>
-			</div>
+			<table class="cbi-section-table" style="width:100%;border-collapse:collapse;">
+				<tr>
+					<th style="padding:8px;border:1px solid #ddd;text-align:center;font-weight:bold;font-size:14px;">监狱</th>
+					<th style="padding:8px;border:1px solid #ddd;text-align:center;font-weight:bold;font-size:14px;">已封禁IP</th>
+					<th style="padding:8px;border:1px solid #ddd;text-align:center;font-weight:bold;font-size:14px;">操作</th>
+				</tr>
+				<%
+				local f = io.popen("fail2ban-client banned 2>/dev/null")
+				local has_bans = false
+				if f then
+					local output = f:read("*a")
+					f:close()
+
+					for jail, ips in output:gmatch("{'([^']+)':%s*%[([^%]]*)%]%}") do
+						local jail_name = jail
+						local has_ip = false
+						local ip_list = {}
+						for ip in ips:gmatch("'([^']+)'") do
+							table.insert(ip_list, ip)
+							has_ip = true
+							has_bans = true
+						end
+						%>
+						<tr>
+							<td style="padding:8px;border:1px solid #ddd;text-align:center;"><strong><%=jail_name%></strong></td>
+							<td style="padding:8px;border:1px solid #ddd;text-align:center;">
+								<% if has_ip then %>
+									<% for _, ip in ipairs(ip_list) do %>
+										<span style="background:#ffcccc;padding:2px 6px;border-radius:3px;margin:2px;display:inline-block;text-decoration:underline;"><%=ip%></span>
+									<% end %>
+								<% else %>
+									<span style="color:#888;">无</span>
+								<% end %>
+							</td>
+							<td style="padding:8px;border:1px solid #ddd;text-align:center;">
+								<% if has_ip then %>
+									<% for _, ip in ipairs(ip_list) do %>
+										<a class="btn" style="background:#ff4444;color:white;padding:4px 8px;border:none;border-radius:3px;cursor:pointer;font-size:12px;text-decoration:none;" href="/cgi-bin/fail2ban?unban&jail=<%=jail_name%>&ip=<%=ip%>">解封 <%=ip%></a>
+									<% end %>
+								<% else %>
+									-
+								<% end %>
+							</td>
+						</tr>
+						<%
+					end
+				end
+				%>
+			</table>
 		</div>
 	</div>
-</div>
 
+	<% if has_bans then %>
+	<div class="cbi-section">
+		<div class="cbi-section-node">
+			<a class="btn" style="background:#cc0000;color:white;padding:8px 16px;border:none;border-radius:5px;cursor:pointer;text-decoration:none;" href="/cgi-bin/fail2ban?unban_all">解封所有IP</a>
+		</div>
+	</div>
+	<% else %>
+	<div class="cbi-section">
+		<div class="cbi-section-node" style="padding:15px;border:1px solid #4CAF50;text-align:center;">
+			<p style="color:green;margin:0;">没有封禁的IP</p>
+		</div>
+	</div>
+	<% end %>
+</div>
 <%+footer%>

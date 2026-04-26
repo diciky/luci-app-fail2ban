@@ -1,0 +1,46 @@
+#!/bin/sh
+echo "Content-Type: text/plain"
+echo "Status: 302 Found"
+echo "Location: /cgi-bin/luci/admin/services/fail2ban/config"
+echo ""
+
+# Read POST data
+CL=$(echo "$CONTENT_LENGTH" | tr -cd '0-9')
+if [ -n "$CL" ] && [ "$CL" -gt 0 ]; then
+	POST_DATA=$(dd bs="$CL" count=1 2>/dev/null)
+fi
+
+CMD="$QUERY_STRING"
+IP=$(echo "$CMD" | sed -n 's/.*ip=\([^&]*\).*/\1/p')
+JAIL=$(echo "$CMD" | sed -n 's/.*jail=\([^&]*\).*/\1/p')
+[ -z "$JAIL" ] && JAIL="dropbear"
+
+case "$CMD" in
+	*ban_ip*)
+		[ -n "$IP" ] && fail2ban-client set $JAIL banip $IP 2>/dev/null
+		;;
+	*unban_all*)
+		fail2ban-client unban --all 2>/dev/null
+		;;
+	*unban*)
+		[ -n "$IP" ] && fail2ban-client set $JAIL unbanip $IP 2>/dev/null
+		;;
+	*reload*)
+		/etc/init.d/fail2ban reload 2>/dev/null
+		;;
+	*start*)
+		/etc/init.d/fail2ban start 2>/dev/null
+		;;
+	*stop*)
+		/etc/init.d/fail2ban stop 2>/dev/null
+		;;
+	*restart*)
+		/etc/init.d/fail2ban restart 2>/dev/null
+		;;
+	*save_config*)
+		CONFIG=$(echo "$POST_DATA" | sed -n 's/.*config_content=//p' | python3 -c "import sys,urllib.parse; print(urllib.parse.unquote_plus(sys.stdin.read()))")
+		if [ -n "$CONFIG" ]; then
+			echo "$CONFIG" > /etc/config/fail2ban
+		fi
+		;;
+esac

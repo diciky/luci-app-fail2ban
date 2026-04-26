@@ -1,57 +1,72 @@
 <%+header%>
-
-<%
-local status = require("luci.controller.fail2ban").get_status()
-%>
-
 <div class="cbi-map">
-	<h2><%:Fail2ban Status%></h2>
+	<h2>Fail2ban 状态</h2>
 
 	<div class="cbi-section">
 		<div class="cbi-section-node">
-			<div class="table" style="width:100%;">
-				<div class="tr">
-					<div class="td left" style="width:200px;"><strong><%:Service Status:%></strong></div>
-					<div class="td">
-						<% if status.running then %>
-							<span style="color:green;font-size:16px;">● <%:Running%></span>
-						<% else %>
-							<span style="color:red;font-size:16px;">● <%:Stopped%></span>
-						<% end %>
-					</div>
+			<div style="margin:10px 0;">
+				<a class="btn" href="<%=luci.dispatcher.build_url("admin/services/fail2ban/bans")%>">封禁列表</a>
+				<a class="btn" href="<%=luci.dispatcher.build_url("admin/services/fail2ban/ban")%>">封禁IP</a>
+				<a class="btn" href="<%=luci.dispatcher.build_url("admin/services/fail2ban/log")%>">日志</a>
+				<a class="btn" href="<%=luci.dispatcher.build_url("admin/services/fail2ban/config")%>">配置</a>
+			</div>
+		</div>
+	</div>
+
+	<div class="cbi-section">
+		<legend>服务状态</legend>
+		<div class="cbi-section-node">
+			<div style="padding:15px;border:1px solid #ddd;">
+				<div style="margin:5px 0;">
+					<strong>服务状态:</strong>
+					<%
+					local running = false
+					local f = io.popen("pgrep -x fail2ban-server > /dev/null 2>&1 && echo 'yes' || echo 'no'")
+					if f then
+						local result = f:read("*a")
+						if result and result:match("yes") then
+							running = true
+						end
+						f:close()
+					end
+					%>
+					<% if running then %>
+						<span style="color:green;font-size:16px;">● 运行中</span>
+					<% else %>
+						<span style="color:red;font-size:16px;">● 已停止</span>
+					<% end %>
+				</div>
+				<div style="margin:5px 0;">
+					<strong>操作:</strong>
+					<% if not running then %>
+						<a class="btn" style="background:#4CAF50;color:white;padding:8px 16px;text-decoration:none;border-radius:5px;" href="/cgi-bin/fail2ban?start">启动</a>
+					<% else %>
+						<a class="btn" style="padding:8px 16px;text-decoration:none;border-radius:5px;" href="/cgi-bin/fail2ban?reload">重载</a>
+						<a class="btn" style="background:#f44336;color:white;padding:8px 16px;text-decoration:none;border-radius:5px;" href="/cgi-bin/fail2ban?stop">停止</a>
+					<% end %>
 				</div>
 			</div>
 		</div>
 	</div>
 
 	<div class="cbi-section">
-		<legend><%:SSH Jail Status%></legend>
+		<legend>监狱状态</legend>
 		<div class="cbi-section-node">
-			<pre style="background:#f5f5f5;padding:15px;border-radius:5px;overflow-x:auto;font-size:13px;max-height:300px;"><%=status.jail_raw%></pre>
-		</div>
-	</div>
-
-	<div class="cbi-section">
-		<div class="cbi-section-node">
-			<div style="margin:10px 0;">
-				<a class="btn" href="<%=luci.dispatcher.build_url("admin/services/fail2ban/action/start")%>"><%:Start%></a>
-				<a class="btn" href="<%=luci.dispatcher.build_url("admin/services/fail2ban/action/reload")%>"><%:Reload%></a>
-				<a class="btn" href="<%=luci.dispatcher.build_url("admin/services/fail2ban/action/stop")%>"><%:Stop%></a>
-				<input type="button" class="btn" value="<%:Refresh%>" onclick="location.reload()" />
-			</div>
-		</div>
-	</div>
-
-	<div class="cbi-section">
-		<legend><%:Quick Actions%></legend>
-		<div class="cbi-section-node">
-			<div style="margin:10px 0;">
-				<a class="btn" href="<%=luci.dispatcher.build_url("admin/services/fail2ban/bans")%>"><%:View Banned IPs%> →</a>
-				<a class="btn" href="<%=luci.dispatcher.build_url("admin/services/fail2ban/config")%>"><%:Configuration%> →</a>
-				<a class="btn" href="<%=luci.dispatcher.build_url("admin/services/fail2ban/log")%>"><%:View Log%> →</a>
-			</div>
+			<pre style="padding:15px;border-radius:5px;overflow-x:auto;font-size:12px;max-height:300px;border:1px solid #ddd;"><%
+			local f = io.popen("fail2ban-client status 2>/dev/null")
+			if f then
+				local output = f:read("*a")
+				f:close()
+				if output and output ~= "" then
+					print(output)
+				else
+					print("无监狱状态")
+				end
+			else
+				print("fail2ban-client 未找到或错误")
+			end
+			%></pre>
 		</div>
 	</div>
 </div>
-
 <%+footer%>
