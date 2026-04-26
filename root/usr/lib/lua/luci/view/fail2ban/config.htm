@@ -1,0 +1,75 @@
+<%+header%>
+
+<div class="cbi-map">
+	<h2><%:Fail2ban Configuration%></h2>
+
+	<form method="post" action="<%=luci.dispatcher.build_url("admin/services/fail2ban/config")%>">
+		<div class="cbi-section">
+			<legend><%:Global Settings%></legend>
+			<div class="cbi-section-node">
+				<table class="cbi-section-table" style="width:100%;">
+					<tr>
+						<td style="width:200px;"><%:Enable Fail2ban%></td>
+						<td>
+							<input type="checkbox" name="enabled" value="1" checked />
+						</td>
+					</tr>
+					<tr>
+						<td><%:SSH Port%></td>
+						<td>
+							<input type="text" name="ssh_port" value="38438" style="width:100px;" />
+						</td>
+					</tr>
+					<tr>
+						<td><%:Ban Time (seconds)%></td>
+						<td>
+							<input type="text" name="bantime" value="86400" style="width:120px;" />
+							<span style="color:#888;font-size:12px;">(86400 = 24 hours)</span>
+						</td>
+					</tr>
+					<tr>
+						<td><%:Find Time (seconds)%></td>
+						<td>
+							<input type="text" name="findtime" value="600" style="width:120px;" />
+							<span style="color:#888;font-size:12px;">(600 = 10 minutes)</span>
+						</td>
+					</tr>
+					<tr>
+						<td><%:Max Retry%></td>
+						<td>
+							<input type="text" name="maxretry" value="5" style="width:100px;" />
+						</td>
+					</tr>
+					<tr>
+						<td><%:Log Level%></td>
+						<td>
+							<select name="loglevel" style="width:120px;">
+								<option value="CRITICAL">CRITICAL</option>
+								<option value="ERROR">ERROR</option>
+								<option value="WARN">WARN</option>
+								<option value="INFO" selected>INFO</option>
+								<option value="DEBUG">DEBUG</option>
+							</select>
+						</td>
+					</tr>
+					<tr>
+						<td><%:Ban Time Increment%></td>
+						<td>
+							<input type="checkbox" name="bantimeincrement" value="1" />
+							<span style="color:#888;font-size:12px;">Enable progressive ban time</span>
+						</td>
+					</tr>
+				</table>
+			</div>
+		</div>
+
+		<div class="cbi-section">
+			<div class="cbi-section-node">
+				<input type="submit" class="btn" value="<%:Save & Apply%>" />
+				<a class="btn" href="<%=luci.dispatcher.build_url("admin/services/fail2ban/status")%>"><%:Cancel%></a>
+			</div>
+		</div>
+	</form>
+</div>
+
+<%+footer%>
