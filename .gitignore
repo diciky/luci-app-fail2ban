@@ -16,7 +16,6 @@ openwrt_build*/
 
 # Git
 .git/
-.github/
 
 # Temp
 *.tmp

@@ -1,0 +1,159 @@
+name: Build OpenWrt Package
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup OpenWrt Build Environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential ccache ecj fastjar flex gawk gettext git java-proposed-classpath libncurses5-dev libncursesw5-dev libssl-dev python3 python3-distutils python3-yaml rsync subversion unzip wget which zlib1g-dev
+
+      - name: Clone OpenWrt
+        run: |
+          git clone --depth 1 https://github.com/openwrt/openwrt.git openwrt_build
+          cd openwrt_build
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Prepare Package
+        run: |
+          cd openwrt_build
+          # Create package directory if not exists
+          mkdir -p package/feeds/luci
+          # Copy package to OpenWrt feeds
+          cp -r ${{ github.workspace }}/fail2ban-luci/root/* package/feeds/luci/luci-app-fail2ban/
+          # Also copy to local package directory for make
+          mkdir -p package/luci-app-fail2ban
+          cp -r ${{ github.workspace }}/fail2ban-luci/root/* package/luci-app-fail2ban/
+
+      - name: Update Feeds
+        run: |
+          cd openwrt_build
+          ./scripts/feeds update luci
+          ./scripts/feeds install -a
+
+      - name: Configure
+        run: |
+          cd openwrt_build
+          # Use lightweight config for faster build
+          cat > .config << 'EOF'
+          CONFIG_MODULES=y
+          CONFIG_HAVE_DOT_CONFIG=y
+          CONFIG_HAVE_CCACHE=y
+          CONFIG_CCACHE=y
+          CONFIG_CCACHE_DIR="/tmp/.ccache"
+          CONFIG_LUCI_CSSTIDY=
+          CONFIG_LUCI_JSMIN=
+          CONFIG_LUCI_LUCSID=
+          CONFIG_LUCI_UGLY=
+          CONFIG_PACKAGE_luci-app-firewall=y
+          CONFIG_PACKAGE_luci-base=y
+          CONFIG_PACKAGE_luci-compat=y
+          CONFIG_PACKAGE_luci-app-fail2ban=y
+          CONFIG_PACKAGE_libc=y
+          CONFIG_PACKAGE_libgcc=y
+          CONFIG_PACKAGE_libpthread=y
+          CONFIG_END=y
+          EOF
+          make defconfig
+
+      - name: Build Package
+        run: |
+          cd openwrt_build
+          make package/luci-app-fail2ban/compile -j$(nproc)
+
+      - name: Collect Artifact
+        run: |
+          cd openwrt_build
+          find . -name "luci-app-fail2ban_*.ipk" -type f 2>/dev/null
+          mkdir -p ${{ github.workspace }}/artifacts
+          cp $(find . -name "luci-app-fail2ban_*.ipk" -type f 2>/dev/null | head -1) ${{ github.workspace }}/artifacts/ 2>/dev/null || true
+
+      - name: Upload Artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: luci-app-fail2ban-ipk
+          path: artifacts/*.ipk
+          retention-days: 7
+
+  build-all-targets:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+
+    strategy:
+      matrix:
+        target: [armvirt, x86_64, mvebu]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Build Environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential ccache ecj fastjar flex gawk gettext git java-proposed-classpath libncurses5-dev libncursesw5-dev libssl-dev python3 python3-distutils python3-yaml rsync subversion unzip wget which zlib1g-dev
+
+      - name: Clone OpenWrt (${{ matrix.target }})
+        run: |
+          git clone --depth 1 https://github.com/openwrt/openwrt.git openwrt_${{ matrix.target }}
+          cd openwrt_${{ matrix.target }}
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Prepare Package
+        run: |
+          cd openwrt_${{ matrix.target }}
+          mkdir -p package/luci-app-fail2ban
+          cp -r ${{ github.workspace }}/fail2ban-luci/root/* package/luci-app-fail2ban/
+          ./scripts/feeds install -a
+
+      - name: Configure for ${{ matrix.target }}
+        run: |
+          cd openwrt_${{ matrix.target }}
+          case "${{ matrix.target }}" in
+            armvirt) echo 'CONFIG_TARGET_armvirt=y' >> .config ;;
+            x86_64) echo 'CONFIG_TARGET_x86_64=y' >> .config ;;
+            mvebu) echo 'CONFIG_TARGET_mvebu=y' >> .config ;;
+          esac
+          echo 'CONFIG_HAVE_DOT_CONFIG=y' >> .config
+          echo 'CONFIG_LUCI_CSSTIDY=' >> .config
+          echo 'CONFIG_LUCI_JSMIN=' >> .config
+          echo 'CONFIG_LUCI_LUCSID=' >> .config
+          echo 'CONFIG_LUCI_UGLY=' >> .config
+          echo 'CONFIG_PACKAGE_luci-app-fail2ban=y' >> .config
+          make defconfig
+
+      - name: Build for ${{ matrix.target }}
+        run: |
+          cd openwrt_${{ matrix.target }}
+          make -j$(nproc) 2>&1 | tail -50
+
+      - name: Collect Artifacts
+        if: success()
+        run: |
+          cd openwrt_${{ matrix.target }}
+          mkdir -p ${{ github.workspace }}/artifacts/${{ matrix.target }}
+          find . -name "luci-app-fail2ban_*.ipk" -type f -exec cp {} ${{ github.workspace }}/artifacts/${{ matrix.target }}/ \;
+
+      - name: Upload Artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: luci-app-fail2ban-${{ matrix.target }}
+          path: artifacts/${{ matrix.target }}/*.ipk
+          retention-days: 7

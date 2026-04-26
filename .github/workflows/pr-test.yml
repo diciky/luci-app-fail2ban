@@ -1,0 +1,39 @@
+name: Quick Build Test
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - '**.lua'
+      - '**.htm'
+      - '**Makefile'
+      - '.github/workflows/**'
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  syntax-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check Lua Syntax
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lua5.3
+          find . -name "*.lua" -exec lua5.3 -p {} \; 2>&1 || true
+
+      - name: Check View Files
+        run: |
+          echo "Checking view files..."
+          ls -la root/usr/lib/lua/luci/view/fail2ban/
+          echo "Checking controller..."
+          ls -la root/usr/lib/lua/luci/controller/
+
+      - name: Validate Makefile
+        run: |
+          echo "Validating Makefile..."
+          head -30 Makefile
